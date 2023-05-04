@@ -1,6 +1,6 @@
 ## Learning about RPCs
 
-> If you are interested in classic rpc, check out the [typed-rpc](/tree/typed-rpc) branch.
+> If you are interested in classic rpc, check out the [typed-rpc](https://github.com/BRAVO68WEB/learning-rpcs/tree/typed-rpc) branch.
 
 ### What is gRPC?
 
