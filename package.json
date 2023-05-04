@@ -23,7 +23,7 @@
     "build": "tsc",
     "start": "node --es-module-specifier-resolution=node --loader ts-node/esm ./build/index.js",
     "start:client": "nodemon src/client/index.ts --watch src/client",
-    "proto:build": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. ./protos/*.proto --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true",
+    "proto:build": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. ./proto/*.proto --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true",
     "proto:lint": "cd proto; buf lint; cd ..",
     "codegen:buf": "cd proto; buf generate; cd .."
   }
