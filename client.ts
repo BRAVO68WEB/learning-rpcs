@@ -1,19 +1,23 @@
-import { ServiceError, credentials } from "@grpc/grpc-js";
-import { AuthServiceClient, LoginRequest, LoginResult } from "./protos/auth";
-import { KVServiceClient, GetRequest, GetResponse, PutRequest, PutResponse, DeleteRequest, DeleteResponse } from "./protos/kv";
+import 'dotenv/config'
 
+import { ServiceError, credentials, Metadata } from "@grpc/grpc-js";
+import { AuthServiceClient, LoginRequest, LoginResult } from "./proto/auth";
+import { KVServiceClient, GetRequest, GetResponse, PutRequest, PutResponse, DeleteRequest, DeleteResponse } from "./proto/kv";
 
 const loginRequest: LoginRequest = {
     username: "admin",
     password: "qwerty"
 };
 
+const metadata = new Metadata();
+metadata.set('Authorization', `Bearer ${process.env.API_KEY}`);
+
 const auth_client = new AuthServiceClient(
-    "localhost:8080", credentials.createInsecure()
+    "localhost:" + process.env.PORT, credentials.createInsecure()
 );
 
 const kv_client = new KVServiceClient(
-    "localhost:8080", credentials.createInsecure()
+    "localhost:" + process.env.PORT, credentials.createInsecure(),
 );
 
 auth_client.login(loginRequest, (err: ServiceError | null, response: LoginResult) => {
@@ -28,7 +32,7 @@ const getRequest: GetRequest = {
     key: "key1"
 };
 
-kv_client.get(initGgetRequest, (err: ServiceError | null, response: GetResponse) => {
+kv_client.get(initGgetRequest, metadata, (err: ServiceError | null, response: GetResponse) => {
     console.log(response);
 });
 
@@ -37,11 +41,11 @@ const putRequest: PutRequest = {
     value: "value1"
 };
 
-kv_client.put(putRequest, (err: ServiceError | null, response: PutResponse) => {
+kv_client.put(putRequest, metadata, (err: ServiceError | null, response: PutResponse) => {
     console.log(response);
 });
 
-kv_client.get(getRequest, (err: ServiceError | null, response: GetResponse) => {
+kv_client.get(getRequest, metadata, (err: ServiceError | null, response: GetResponse) => {
     console.log(response);
 });
 
@@ -49,6 +53,9 @@ const deleteRequest: DeleteRequest = {
     key: "key1"
 };
 
-kv_client.delete(deleteRequest, (err: ServiceError | null, response: DeleteResponse) => {
+kv_client.delete(deleteRequest, metadata, (err: ServiceError | null, response: DeleteResponse) => {
     console.log(response);
 });
+
+kv_client.close();
+auth_client.close();

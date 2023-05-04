@@ -1,8 +1,8 @@
 import "dotenv/config";
 
 import { Server, ServerCredentials, ServerUnaryCall, sendUnaryData} from "@grpc/grpc-js";
-import { LoginCode, LoginRequest, LoginResult, AuthServiceService } from "./protos/auth";
-import { GetRequest, GetResponse, PutRequest, PutResponse, DeleteRequest, DeleteResponse, KVServiceService } from "./protos/kv";
+import { LoginCode, LoginRequest, LoginResult, AuthServiceService } from "./proto/auth";
+import { GetRequest, GetResponse, PutRequest, PutResponse, DeleteRequest, DeleteResponse, KVServiceService } from "./proto/kv";
 
 const port = process.env.PORT || 8080;
 
@@ -60,7 +60,6 @@ const put = (
     call: ServerUnaryCall<PutRequest, PutResponse>,
     callback: sendUnaryData<PutResponse>
 ) => {
-    // check authorization here
     let token = call.metadata.toJSON()["authorization"];
     if(!token) {
         const error = new Error("Unauthorized");
