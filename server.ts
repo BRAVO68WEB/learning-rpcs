@@ -1,36 +1,115 @@
 import "dotenv/config";
-import express, { NextFunction, Request, Response } from "express";
-import { rpcHandler } from "typed-rpc/express";
-import statusService from "./statusService";
-import morgan from "morgan";
 
-export const app: express.Application = express();
-const PORT = process.env.PORT || 3000;
+import { Server, ServerCredentials, ServerUnaryCall, sendUnaryData} from "@grpc/grpc-js";
+import { LoginCode, LoginRequest, LoginResult, AuthServiceService } from "./protos/auth";
+import { GetRequest, GetResponse, PutRequest, PutResponse, DeleteRequest, DeleteResponse, KVServiceService } from "./protos/kv";
 
-app.use(express.json());
-app.use(morgan("dev"));
+const port = process.env.PORT || 8080;
 
-const rpcServer = new statusService()
+export const KeyStore : any = {
+    hello: "world",
+}
 
-app.post("/api", (req: Request, res: Response, next: NextFunction)=> {
-    if(req.headers.authorization !== `Bearer ${process.env.API_KEY}`) {
-        return res.status(401).json({error: "Unauthorized"});
+const users = [
+    { id: 0, username: "admin", password: "qwerty" }
+];
+
+const login = (
+    call: ServerUnaryCall<LoginRequest, LoginResult>,
+    callback: sendUnaryData<LoginResult>
+) => {
+    const user = users.find((user) => 
+        user.username === call.request.username && 
+        user.password === call.request.password
+    );
+
+    if (user) {
+        const result: LoginResult = {
+            loginCode: LoginCode.SUCCESS,
+            token: "RandomSecretToken",
+        };
+        callback(null, result);
+    } else {
+        const result: LoginResult = {
+            loginCode: LoginCode.FAIL,
+        };
+        callback(null, result);
     }
-    next();
-}, rpcHandler(rpcServer));
+}
 
-app.get("/status", (req: Request, res: Response, next: NextFunction) => {
-    res.json(rpcServer.getCurrentStatus());
-});
+const get = (
+    call: ServerUnaryCall<GetRequest, GetResponse>,
+    callback: sendUnaryData<GetResponse>
+) => {
+    const key = call.request.key;
+    const value = KeyStore[key];
 
-app.get("/store", (req: Request, res: Response, next: NextFunction) => {
-    const apiKey = req.query.apiKey as string;
-    if (apiKey !== process.env.API_KEY) {
-        return res.status(401).json({error: "Unauthorized"});
+    if(!value) {
+        const error = new Error("Key not found");
+        callback(error, null);
+        return;
     }
-    res.json(rpcServer.getStore());
-});
 
-app.listen(PORT, () => {
-    console.log("Listening on port 3000...");
+    const result: GetResponse = { 
+        value: value
+    };
+    callback(null, result);
+}
+
+const put = (
+    call: ServerUnaryCall<PutRequest, PutResponse>,
+    callback: sendUnaryData<PutResponse>
+) => {
+    // check authorization here
+    let token = call.metadata.toJSON()["authorization"];
+    if(!token) {
+        const error = new Error("Unauthorized");
+        callback(error, null);
+        return;
+    }
+    if(token.toString().split(" ")[1] != process.env.API_KEY) {
+        const error = new Error("Unauthorized");
+        callback(error, null);
+        return;
+    }
+    const key = call.request.key;
+    const value = call.request.value;
+
+    KeyStore[key] = value;
+
+    const result: PutResponse = {
+        value: value
+    };
+    callback(null, result);
+}
+
+const del = (
+    call: ServerUnaryCall<DeleteRequest, DeleteResponse>,
+    callback: sendUnaryData<DeleteResponse>
+) => {
+    const key = call.request.key;
+    const value = KeyStore[key];
+    if(!value) {
+        const error = new Error("Key not found");
+
+        callback(error, null);
+        return;
+    }
+
+    delete KeyStore[key];
+
+    const result: DeleteResponse = {
+        value: value
+    };
+    callback(null, result);
+}
+
+const server = new Server();
+
+server.addService(AuthServiceService, { login })
+server.addService(KVServiceService, { get, put, delete: del })
+
+server.bindAsync("localhost:" + port, ServerCredentials.createInsecure(), () => {
+    server.start();
+    console.log("Server started, listening localhost:" + port);
 });
